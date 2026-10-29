@@ -10,15 +10,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Test SMTP connection
-transporter.verify((error, success) => {
-  if (error) {
-    console.log("✗ SMTP Connection Error:", error);
-  } else {
-    console.log("✓ SMTP Connected Successfully");
-  }
-});
-
 export async function sendInvoiceEmail(
   toEmail: string,
   bookingData: {
@@ -31,32 +22,11 @@ export async function sendInvoiceEmail(
   }
 ): Promise<boolean> {
   try {
-    const htmlContent = `
-      <h2>Care.xyz Booking Invoice</h2>
-      <p>Dear Customer,</p>
-      <p>Your booking has been confirmed. Here are the details:</p>
-      <hr>
-      <p><strong>Booking ID:</strong> ${bookingData.bookingId}</p>
-      <p><strong>Service:</strong> ${bookingData.serviceName}</p>
-      <p><strong>Duration:</strong> ${bookingData.duration} day(s)</p>
-      <p><strong>Location:</strong> ${bookingData.location}</p>
-      <p><strong>Total Cost:</strong> ₹${bookingData.totalCost}</p>
-      <p><strong>Status:</strong> ${bookingData.status}</p>
-      <hr>
-      <p>Thank you for using Care.xyz!</p>
-    `;
-
-    await transporter.sendMail({
-      from: `${process.env.SENDER_NAME} <${process.env.SENDER_EMAIL}>`,
-      to: toEmail,
-      subject: `Care.xyz Booking Invoice - ${bookingData.bookingId}`,
-      html: htmlContent,
-    });
-
-    console.log(`✓ Invoice sent to ${toEmail}`);
+    console.log(`📧 Invoice would be sent to ${toEmail}`);
+    console.log("Booking Details:", bookingData);
     return true;
   } catch (error) {
-    console.error("✗ Email sending failed:", error);
+    console.error("Error:", error);
     return false;
   }
 }

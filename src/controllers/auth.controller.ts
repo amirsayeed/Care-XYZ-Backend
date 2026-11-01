@@ -6,6 +6,7 @@ import { generateToken, verifyToken } from "../utils/jwt";
 import { registerSchema, loginSchema, RegisterInput, LoginInput } from "../utils/validators";
 import bcryptjs from "bcryptjs";
 import { ObjectId } from "mongodb";
+import { verifyGoogleIdToken } from "../utils/google";
 
 export async function register(req: AuthRequest, res: Response) {
   try {
@@ -80,6 +81,10 @@ export async function login(req: AuthRequest, res: Response) {
       return errorResponse(res, "Invalid credentials", 401);
     }
 
+    if (!user?.passwordHash) {
+      return errorResponse(res, "Invalid credentials", 401);
+    }
+
     const userId = user._id.toString();
     const token = generateToken(userId, email);
 
@@ -95,6 +100,66 @@ export async function login(req: AuthRequest, res: Response) {
     return errorResponse(res, "Login failed", 500, error);
   }
 }
+
+export async function googleLogin(req: AuthRequest, res: Response) {
+  try {
+    const { idToken } = req.body as { idToken?: string };
+    if (!idToken) {
+      return errorResponse(res, "Google token is required", 400);
+    }
+
+    const profile = await verifyGoogleIdToken(idToken);
+
+    const db = await getDB();
+    const usersCollection = db.collection("users");
+
+    const existing = await usersCollection.findOne({
+      $or: [{ googleId: profile.googleId }, { email: profile.email }],
+    });
+
+    let userId: string;
+    let name: string;
+    let contact: string;
+
+    if (existing) {
+      userId = existing._id.toString();
+      name = existing.name;
+      contact = existing.contact ?? "";
+
+      if (!existing.googleId) {
+        await usersCollection.updateOne(
+          { _id: existing._id },
+          { $set: { googleId: profile.googleId, updatedAt: new Date() } }
+        );
+      }
+    } else {
+      const result = await usersCollection.insertOne({
+        name: profile.name,
+        email: profile.email,
+        contact: "",
+        nid: "",
+        googleId: profile.googleId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      userId = result.insertedId.toString();
+      name = profile.name;
+      contact = "";
+    }
+
+    const token = generateToken(userId, profile.email);
+
+    return successResponse(
+      res,
+      { user: { id: userId, name, email: profile.email, contact }, token },
+      "Google login successful"
+    );
+  } catch (error) {
+    console.error("[google-login] failed:", error);
+    return errorResponse(res, "Google login failed", 401, error);
+  }
+}
+
 
 export async function getMe(req: AuthRequest, res: Response) {
   try {

@@ -1,37 +1,12 @@
 import "dotenv/config";
-import express from "express";
-import cors from "cors";
+import app from "./app";
 import { connectToDatabase } from "./config/database";
-import authRoutes from "./routes/auth.routes";
-import servicesRoutes from "./routes/services.routes";
-import locationsRoutes from "./routes/locations.routes";
-import bookingsRoutes from "./routes/bookings.routes";
-import testimonialsRoutes from "./routes/testimonials.routes";
 
-const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/services", servicesRoutes);
-app.use("/api/locations", locationsRoutes);
-app.use("/api/bookings", bookingsRoutes);
-app.use("/api/testimonials", testimonialsRoutes);
-
-// Health check
-app.get("/health", (req, res) => {
-  res.json({ status: "✓ Backend running" });
-});
-
-// Connect to database and start server
-async function startServer() {
+async function start() {
   try {
     await connectToDatabase();
-    
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
@@ -41,4 +16,4 @@ async function startServer() {
   }
 }
 
-startServer();
+start();

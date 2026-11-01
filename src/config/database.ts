@@ -1,39 +1,25 @@
 import { MongoClient, Db } from "mongodb";
 
-let cachedClient: MongoClient | null = null;
-let cachedDb: Db | null = null;
+let clientPromise: Promise<MongoClient> | null = null;
 
 export async function connectToDatabase(): Promise<Db> {
-  if (cachedDb) {
-    return cachedDb;
-  }
-
   const uri = process.env.MONGODB_URI;
   if (!uri) {
-    throw new Error("MONGODB_URI not defined in .env");
+    throw new Error("MONGODB_URI is not defined");
   }
 
-  try {
-    const client = new MongoClient(uri);
-    await client.connect();
-    cachedClient = client;
-    cachedDb = client.db("care-xyz");
-    console.log("✓ MongoDB connected");
-    return cachedDb;
-  } catch (error) {
-    console.error("✗ MongoDB connection failed:", error);
-    throw error;
+  if (!clientPromise) {
+    clientPromise = new MongoClient(uri).connect().catch((error) => {
+      // Clear the cache so the next request retries
+      clientPromise = null;
+      throw error;
+    });
   }
+
+  const client = await clientPromise;
+  return client.db("care-xyz");
 }
 
 export async function getDB(): Promise<Db> {
   return connectToDatabase();
-}
-
-export async function closeDatabaseConnection(): Promise<void> {
-  if (cachedClient) {
-    await cachedClient.close();
-    cachedClient = null;
-    cachedDb = null;
-  }
 }
